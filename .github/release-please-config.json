@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "Features",
+      "hidden": false
+    },
+    {
+      "type": "fix",
+      "section": "Bug Fixes",
+      "hidden": false
+    }
+  ],
+  "packages": {
+    ".": {
+      "release-as": "0.0.1"
+    }
+  },
+  "plugins": [
+    {
+      "type": "sentence-case"
+    }
+  ],
+  "include-v-in-tag": true,
+  "include-component-in-tag": false,
+  "release-type": "node",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "draft": false,
+  "draft-pull-request": false,
+  "prerelease": false,
+  "pull-request-header": "An automated release has been created for you.",
+  "separate-pull-requests": true,
+  "signoff": "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+}
