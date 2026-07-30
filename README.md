@@ -1,71 +1,19 @@
 # claude-agent-sdk-nats
 
-A NATS JetStream-backed `SessionStore` adapter for the
-[Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk),
-following the pattern of the SDK's
-[session-stores examples](https://github.com/anthropics/claude-agent-sdk-typescript/tree/main/examples/session-stores)
-(S3, Redis, Postgres).
+**`@trogonstack/claude-agent-sdk-nats` stores Claude Agent SDK conversation transcripts in NATS JetStream.**
 
-## Subject scheme
+**It implements the SDK's `SessionStore` contract on a single JetStream stream.** Every transcript entry the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) mirrors becomes a message on a per-session subject, resume replays them in order, and sessions can be listed, deleted, and inspected by subject. It follows the pattern of the SDK's [session-stores reference adapters](https://github.com/anthropics/claude-agent-sdk-typescript/tree/main/examples/session-stores) for S3, Redis, and Postgres.
 
-`projectKey`, `sessionId`, and `subpath` are opaque strings that may contain
-characters illegal in NATS subject tokens (`/`, `.`, spaces, `*`, `>`), so each
-part is base64url-encoded into a single subject token.
+**It exists because agent sessions written only to local disk die with the machine that ran them.** Mirroring transcripts to JetStream makes sessions durable and resumable from any instance that can reach your NATS cluster, with ordering guaranteed by the server and retention under your operational control.
 
-| Subject                                                          | Contents                                            |
-| ---------------------------------------------------------------- | --------------------------------------------------- |
-| `{prefix}.{enc(projectKey)}.{enc(sessionId)}.main`               | Main transcript entries, one message per JSON entry |
-| `{prefix}.{enc(projectKey)}.{enc(sessionId)}.sub.{enc(subpath)}` | Subagent transcript entries                         |
-
-`prefix` defaults to `claude.sessions` and the stream defaults to
-`CLAUDE_SESSIONS`.
-
-## Stream provisioning
-
-The adapter never creates, updates, or deletes stream configuration. Stream
-provisioning is an operations concern: provision the stream with your usual
-tooling (NATS CLI, Terraform, GitOps) before pointing the adapter at it.
-
-Required configuration:
-
-- `subjects` must cover `{prefix}.>` (e.g. `claude.sessions.>`)
-- `retention: limits` (the adapter relies on limits-based semantics; work-queue
-  or interest retention would delete entries as they are read)
-
-Recommended configuration:
-
-- `duplicate_window: 2m` so the `Nats-Msg-Id` header dedupes the SDK's
-  at-least-once append retries
-- `storage: file` for durability
-- `max_age` (or `max_bytes`/`max_msgs`) for retention, according to your
-  compliance requirements
-
-Example with the NATS CLI:
-
-```bash
-nats stream add CLAUDE_SESSIONS \
-  --subjects 'claude.sessions.>' \
-  --storage file \
-  --retention limits \
-  --dupe-window 2m \
-  --max-age 90d \
-  --replicas 3 \
-  --discard old --max-msgs=-1 --max-msgs-per-subject=-1 \
-  --max-bytes=-1 --max-msg-size=-1 --max-consumers=-1 \
-  --allow-rollup --no-deny-delete --no-deny-purge
-```
-
-`--no-deny-purge` matters: `delete()` is implemented as a purge by subject
-filter and fails on streams provisioned with `--deny-purge`.
+**It is for teams already running NATS who are building on the Claude Agent SDK.** If you want session durability without adding a database, and you want retention, replication, and cleanup managed with the same tooling as the rest of your streams, this adapter is the missing piece.
 
 ## Install
 
 ```bash
 bun add @trogonstack/claude-agent-sdk-nats
-# or: npm install @trogonstack/claude-agent-sdk-nats
+# or: pnpm add @trogonstack/claude-agent-sdk-nats
 ```
-
-The package is ESM-only.
 
 ## Usage
 
@@ -91,36 +39,52 @@ for await (const message of query({
 }
 ```
 
-### Resume
+Resume a previous session by passing its id:
 
 ```typescript
 for await (const message of query({
   prompt: 'Continue where we left off',
-  options: {
-    sessionStore,
-    resume: 'previous-session-id',
-  },
+  options: { sessionStore, resume: 'previous-session-id' },
 })) {
   // ...
 }
 ```
 
-## Testing
+## Stream provisioning
 
-The conformance suite runs live-only, gated on `SESSION_STORE_NATS_URL`:
+The adapter never manages stream configuration. Provision the stream with your
+usual tooling before pointing the adapter at it:
 
 ```bash
-docker compose up --wait
-SESSION_STORE_NATS_URL=nats://localhost:4222 bun test
+nats stream add CLAUDE_SESSIONS \
+  --subjects 'claude.sessions.>' \
+  --storage file \
+  --retention limits \
+  --dupe-window 2m \
+  --max-age 90d \
+  --replicas 3 \
+  --discard old --max-msgs=-1 --max-msgs-per-subject=-1 \
+  --max-bytes=-1 --max-msg-size=-1 --max-consumers=-1 \
+  --allow-rollup --no-deny-delete --no-deny-purge
 ```
 
-## Production notes
+- The example uses the defaults: stream `CLAUDE_SESSIONS`, prefix
+  `claude.sessions`. Both are constructor options.
+- `subjects` must cover `{prefix}.>` and `retention` must be `limits`
+  (work-queue or interest retention deletes entries as they are read).
+- `--no-deny-purge` is required: `delete()` purges by subject filter.
+- `--dupe-window 2m` dedupes the SDK's at-least-once append retries via the
+  `Nats-Msg-Id` header, keyed on each entry's `uuid`.
+- Retention (`--max-age`, `--max-bytes`) is yours to choose; the adapter never
+  expires messages on its own.
+- NATS `max_payload` defaults to 1 MB; raise it if you expect large
+  transcript entries. Oversized entries are rejected, never truncated.
 
-- NATS `max_payload` defaults to 1 MB. Large tool-result entries can exceed
-  this; raise the server's `max_payload` if you expect large transcript
-  entries.
-- Retention is the operator's responsibility. Set `max_age` (or another limit)
-  on the stream configuration; this adapter never expires messages on its
-  own beyond what `delete()` explicitly purges.
-- `duplicate_window` on the stream dedupes the SDK's append retries via the
-  `Nats-Msg-Id` header, keyed on each entry's `uuid` when present.
+## Documentation
+
+- [Design](docs/explanation/design.md): the subject scheme, why listings are
+  derived from the stream instead of indexed, and how dedupe works.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
