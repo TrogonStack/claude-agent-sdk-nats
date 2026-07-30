@@ -1,6 +1,6 @@
 {
   "name": "@trogonstack/claude-agent-sdk-nats",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "NATS JetStream-backed SessionStore adapter for the Claude Agent SDK",
   "keywords": [
     "claude",
