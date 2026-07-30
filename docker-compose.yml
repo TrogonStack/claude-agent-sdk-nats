@@ -1,0 +1,12 @@
+services:
+  nats:
+    image: nats:2.12-alpine
+    command: ['-js', '-m', '8222']
+    ports:
+      - '${NATS_PORT:-4222}:4222'
+      - '${NATS_MONITOR_PORT:-8222}:8222'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8222/healthz']
+      interval: 2s
+      timeout: 2s
+      retries: 15
