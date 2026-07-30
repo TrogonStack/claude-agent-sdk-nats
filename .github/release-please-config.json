@@ -13,7 +13,9 @@
     }
   ],
   "packages": {
-    ".": {}
+    ".": {
+      "component": "@trogonstack/claude-agent-sdk-nats"
+    }
   },
   "plugins": [
     {

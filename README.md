@@ -1,4 +1,4 @@
-# claude-agent-sdk-nats
+# @trogonstack/claude-agent-sdk-nats
 
 **`@trogonstack/claude-agent-sdk-nats` stores Claude Agent SDK conversation transcripts in NATS JetStream.**
 
