@@ -14,7 +14,8 @@
   ],
   "packages": {
     ".": {
-      "component": "@trogonstack/claude-agent-sdk-nats"
+      "component": "@trogonstack/claude-agent-sdk-nats",
+      "initial-version": "0.0.1"
     }
   },
   "plugins": [
@@ -27,11 +28,11 @@
   "pull-request-title-pattern": "chore${scope}: release @trogonstack/claude-agent-sdk-nats v${version}",
   "release-type": "node",
   "bump-minor-pre-major": true,
-  "bump-patch-for-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": false,
   "draft": false,
   "draft-pull-request": false,
   "prerelease": false,
   "pull-request-header": "An automated release has been created for you.",
   "separate-pull-requests": true,
-  "signoff": "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+  "signoff": "SHT Bot <61149376+sht-bot@users.noreply.github.com>"
 }
